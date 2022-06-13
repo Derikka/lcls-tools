@@ -4,10 +4,9 @@
 #       import issues, so leaving as python 2 style for now
 ################################################################################
 from datetime import datetime
+from numpy import sign
 from time import sleep
 from typing import Dict, List, Type
-
-from numpy import sign
 
 import lcls_tools.superconducting.scLinacUtils as utils
 from lcls_tools.common.pyepics_tools.pyepicsUtils import PV
@@ -42,15 +41,15 @@ class SSA:
         if turnOn:
             if self.statusPV.value != utils.SSA_STATUS_ON_VALUE:
                 self.turnOnPV.put(1)
-                sleep(7)
-                if self.statusPV.value != utils.SSA_STATUS_ON_VALUE:
-                    raise utils.SSAPowerError("Unable to turn on SSA")
+                while self.statusPV.value != utils.SSA_STATUS_ON_VALUE:
+                    print("waiting for SSA to turn on")
+                    sleep(1)
         else:
             if self.statusPV.value == utils.SSA_STATUS_ON_VALUE:
                 self.turnOffPV.put(1)
-                sleep(1)
-                if self.statusPV.value == utils.SSA_STATUS_ON_VALUE:
-                    raise utils.SSAPowerError("Unable to turn off SSA")
+                while self.statusPV.value == utils.SSA_STATUS_ON_VALUE:
+                    print("waiting for SSA to turn off")
+                    sleep(1)
 
         print("SSA power set\n")
 
@@ -152,12 +151,17 @@ class StepperTuner:
         else:
             self.move_neg_pv.put(1, waitForPut=False)
 
+        print("Waiting 5s for the motor to start moving")
+        sleep(5)
+
         while self.motor_moving_pv.value == 1:
             print("Motor moving", datetime.now())
             sleep(1)
 
         if self.motor_done_pv.value != 1:
             raise utils.StepperError("Motor not in expected state")
+
+        print("Motor done")
 
 
 class Cavity:
@@ -275,6 +279,9 @@ class Cavity:
         if self.rfStatePV.value != desiredState:
             print("\nSetting RF State...")
             self.rfControlPV.put(desiredState)
+            while self.rfStatePV.value != desiredState:
+                print("Waiting for RF state to change")
+                sleep(1)
 
         print("RF state set\n")
 
@@ -290,8 +297,8 @@ class Cavity:
         print("resetting interlocks and waiting 2s")
         sleep(2)
 
-        print("setting drive to 15")
-        self.drivelevelPV.put(15)
+        print("setting drive to {drive}".format(drive=utils.SAFE_PULSED_DRIVE_LEVEL))
+        self.drivelevelPV.put(utils.SAFE_PULSED_DRIVE_LEVEL)
 
         print("running calibration")
         utils.runCalibration(startPV=self.cavityCalibrationStartPV,
@@ -370,7 +377,7 @@ class Rack:
 
         self.cryomodule = cryoObject
         self.rackName = rackName
-        self.cavities = {}
+        self.cavities: Dict[int, Cavity] = {}
         self.pvPrefix = self.cryomodule.pvPrefix + "RACK{RACK}:".format(RACK=self.rackName)
 
         if rackName == "A":
@@ -518,12 +525,12 @@ INSULATINGVACUUM_CRYOMODULES = [['01'], ['02', 'H1'], ['04', '06', '08', '10', '
                                 ['16', '18', '20', '22', '24', '27', '29', '31', '33', '34']]
 
 
-def make_lcls_cryomodules(cryomoduleClass: Type[Cryomodule] = Cryomodule,
-                          magnetClass: Type[Magnet] = Magnet,
-                          rackClass: Type[Rack] = Rack,
-                          cavityClass: Type[Cavity] = Cavity,
-                          ssaClass: Type[SSA] = SSA,
-                          stepperClass: Type[StepperTuner] = StepperTuner) -> Dict[str, Cryomodule]:
+def CryoDict(cryomoduleClass: Type[Cryomodule] = Cryomodule,
+             magnetClass: Type[Magnet] = Magnet,
+             rackClass: Type[Rack] = Rack,
+             cavityClass: Type[Cavity] = Cavity,
+             ssaClass: Type[SSA] = SSA,
+             stepperClass: Type[StepperTuner] = StepperTuner) -> Dict[str, Cryomodule]:
     cryomoduleObjects: Dict[str, Cryomodule] = {}
     linacObjects: List[Linac] = []
 
@@ -568,7 +575,8 @@ class CryoDict(dict):
     def __init__(self, cryomoduleClass: Type[Cryomodule] = Cryomodule,
                  cavityClass: Type[Cavity] = Cavity,
                  magnetClass: Type[Magnet] = Magnet, rackClass: Type[Rack] = Rack,
-                 stepperClass: Type[StepperTuner] = StepperTuner):
+                 stepperClass: Type[StepperTuner] = StepperTuner,
+                 ssaClass: Type[SSA] = SSA):
         super().__init__()
 
         self.cryomoduleClass = cryomoduleClass
@@ -576,6 +584,7 @@ class CryoDict(dict):
         self.magnetClass = magnetClass
         self.rackClass = rackClass
         self.stepperClass = stepperClass
+        self.ssaClass = ssaClass
 
     def __missing__(self, key):
         if key in L0B:
@@ -596,7 +605,8 @@ class CryoDict(dict):
                                     magnetClass=self.magnetClass,
                                     rackClass=self.rackClass,
                                     stepperClass=self.stepperClass,
-                                    isHarmonicLinearizer=(key in L1BHL))
+                                    isHarmonicLinearizer=(key in L1BHL),
+                                    ssaClass=self.ssaClass)
 
 
 CRYOMODULE_OBJECTS = CryoDict()
