@@ -4,9 +4,10 @@
 #       import issues, so leaving as python 2 style for now
 ################################################################################
 from datetime import datetime
-from numpy import sign
 from time import sleep
 from typing import Dict, List, Type
+
+from numpy import sign
 
 import lcls_tools.superconducting.scLinacUtils as utils
 from lcls_tools.common.pyepics_tools.pyepicsUtils import PV
