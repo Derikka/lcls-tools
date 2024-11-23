@@ -165,6 +165,8 @@ def get_values_over_time_range(
 
             try:
                 json_data = json.loads(response.text)
+                print(json_data)
+                print(type(json_data))
                 # It returns a list of len 1 for some godforsaken reason...
                 # unless the archiver returns no data in which case the list is empty...
                 if len(json_data) == 0:
