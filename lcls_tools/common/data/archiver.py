@@ -165,19 +165,15 @@ def get_values_over_time_range(
 
             try:
                 json_data = json.loads(response.text)
-                print(json_data)
-                print(type(json_data))
-                # It returns a list of len 1 for some godforsaken reason...
-                # unless the archiver returns no data in which case the list is empty...
-                if len(json_data) == 0:
-                    result[pv] = ArchiveDataHandler()
-                else:
-                    element = json_data.pop()
-                    for datum in element["data"]:
-                        data_obj: ArchiverValue = ArchiverValue(**datum)
-                        result[pv].value_list.append(data_obj)
+                # json_data returns a list of len 1 for some godforsaken reason...
+                element = json_data.pop()
+                for datum in element["data"]:
+                    data_obj: ArchiverValue = ArchiverValue(**datum)
+                    result[pv].value_list.append(data_obj)
 
+            # ValueError triggered if archiver returns no data
+            # aka the pv is not in Archive Appliance
             except ValueError:
-                print("JSON error with {pv}".format(pv=pv))
+                print("JSON error with {pv} - Make sure it is in the Archive Appliance".format(pv=pv))
 
         return result
