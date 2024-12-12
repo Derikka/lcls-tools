@@ -316,7 +316,7 @@ class TestArchiver(unittest.TestCase):
             )
 
     def test_get_data_no_microseconds(self):
-        time_no_miscroseconds = datetime(
+        time_no_microseconds = datetime(
             year=2024, month=3, day=25, hour=14, minute=7, second=20
         )
 
@@ -336,7 +336,7 @@ class TestArchiver(unittest.TestCase):
 
         try:
             self.assertEqual(
-                get_data_at_time(pv_list=[pv], time_requested=time_no_miscroseconds),
+                get_data_at_time(pv_list=[pv], time_requested=time_no_microseconds),
                 expected_result,
             )
 
