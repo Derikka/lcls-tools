@@ -162,17 +162,16 @@ def get_values_over_time_range(
                     "to": end_time.isoformat(timespec="microseconds") + UTC_DELTA_T,
                 },
             )
-
             try:
                 json_data = json.loads(response.text)
                 # json_data returns a list of len 1 for some godforsaken reason...
+                # unless the archiver returns no data in which case the list is empty...
                 element = json_data.pop()
                 for datum in element["data"]:
                     data_obj: ArchiverValue = ArchiverValue(**datum)
                     result[pv].value_list.append(data_obj)
 
-            # ValueError triggered if archiver returns no data
-            # aka the pv is not in Archive Appliance
+            # ValueError triggered if the pv is not in the Archive Appliance
             except ValueError:
                 print("JSON error with {pv} - Make sure it is in the Archive Appliance".format(pv=pv))
 
